@@ -155,6 +155,10 @@
       }
 
       async function updateTemplate() {
+
+       await cvRouter.stopCapturing();
+
+
         const templateSelect = document.getElementById("templateSelect");
         const selectedTemplate = templateSelect.value;
 
@@ -172,6 +176,7 @@
 
           // Restart capturing with the new template.
           await cvRouter.startCapturing(selectedTemplate);
+          alert(`template has been changed to ${selectedTemplate}`)
         } catch (error) {
           console.error("Failed to update template:", error);
           alert("Failed to update template. Please try again.");
