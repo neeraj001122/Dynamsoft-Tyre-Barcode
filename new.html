@@ -225,16 +225,8 @@
     };
     let pInit = init();
 
-  
 
-
-    document.getElementById("btn-start-capturing").addEventListener("click", async () => {
-      const { cameraEnhancer, cvRouter, cameraView } = await pInit;
-
-      // Open camera and start scanning barcode.
-      await cameraEnhancer.open();
-
-        cameraEnhancer.on("played", () => {
+        const setMaxZoom = async (cameraEnhancer) => {        
         const capabilities = cameraEnhancer.getCapabilities();
         let maxZoom = capabilities?.zoom?.max;
         console.log("Max zoom factor:", maxZoom);
@@ -251,8 +243,18 @@
             }
           }
           cameraEnhancer.setZoom({factor: capabilities.zoom.max});
-        }
-      });
+        }};
+  
+
+
+    document.getElementById("btn-start-capturing").addEventListener("click", async () => {
+      const { cameraEnhancer, cvRouter, cameraView } = await pInit;
+
+      // Open camera and start scanning barcode.
+      await cameraEnhancer.open();
+
+    
+      await setMaxZoom(cameraEnhancer);
 
       cameraView.setScanLaserVisible(true);
       await cvRouter.startCapturing("ReadDistantBarcodes");
