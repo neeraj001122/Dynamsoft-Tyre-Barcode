@@ -165,7 +165,7 @@
           }
 
           let bSendImg = !!document.getElementById("cb-send-img").checked;
-          console.log(resultItems)
+          // console.log(resultItems)
           
           // Collect frames for zip download
           if (collectedFrames.length < MAX_FRAMES && processingCount < 4) {
@@ -175,7 +175,7 @@
               for (let item of resultItems) {
                 if (item.type !== Dynamsoft.Core.EnumCapturedResultItemType.CRIT_ORIGINAL_IMAGE) continue;
                 const imageData = item.imageData;
-                console.log(item);
+                // console.log(item);
                 cvs = imageData.toCanvas();
               }
 
