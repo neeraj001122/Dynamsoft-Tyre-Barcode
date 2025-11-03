@@ -127,7 +127,7 @@
         poorFrameCount++;
         console.log(poorFrameCount)
         console.log(cameraEnhancer.getZoomSettings().factor)
-        if(poorFrameCount >=20){
+        if(poorFrameCount >=10){
           
           cameraEnhancer.setZoom({factor: cameraEnhancer.getZoomSettings().factor - 1});
           poorFrameCount = 0;
