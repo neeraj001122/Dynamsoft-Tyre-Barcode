@@ -125,7 +125,7 @@
       const { cameraEnhancer } = await pInit;
       let poorFrameCount = 0;
 
-      if(frameSharpnes < 400){
+      if(frameSharpnes < 1500){
         frameHealth.innerText = "Frame Health: Poor";
         frameHealth.style.color = "red";
         poorFrameCount++;
@@ -291,12 +291,10 @@
           const resultItems = result.items;
           if (!resultItems.length) return;
 
-          if (resultItems.some((item) => item.type === "barcode")) {
-            Dynamsoft.DCE.Feedback.beep();
-          }
+     
 
           let bSendImg = !!document.getElementById("cb-send-img").checked;
-          // console.log(resultItems)
+          console.log(resultItems)
           
           // Collect frames for zip download
           if (collectedFrames.length < MAX_FRAMES && processingCount < 4) {
@@ -305,8 +303,8 @@
               let cvs;
               for (let item of resultItems) {
                 if (item.type !== Dynamsoft.Core.EnumCapturedResultItemType.CRIT_ORIGINAL_IMAGE) continue;
-                const imageData = item.imageData;
-                cvs = imageData.toCanvas();
+                // const imageData = item.imageData;
+                // cvs = imageData.toCanvas();
                 
                 // const sharpness = calculateLaplacianVariance(cvs);
                 // console.log(`Image sharpness (Laplacian Variance):${sharpness}`);
@@ -342,6 +340,11 @@
             --processingCount;
           }
         };
+        
+             if (resultItems.some((item) => item.type === "barcode")) {
+              console.log('barcodeFound')
+            return;
+          }
         
 
         const intermediateResultReceiver = new Dynamsoft.CVR.IntermediateResultReceiver();
