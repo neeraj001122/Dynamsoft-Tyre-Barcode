@@ -34,12 +34,16 @@
   <div>
     <strong id="FrameHealth"></strong>
   </div>
-  <div id="div-ui-container" style="width: 100%; height: calc(100vh - 200px)"></div>
+  <div id="div-ui-container" style="width: 100%; height: calc(100vh - 250px)"></div>
   <div>
     <strong id="barcodeResult"></strong>
   </div>
+  <style>
+    .dm-camera-mn-toast{position:absolute;font-size:max(1.25vmin,16px);line-height:max(3vmin,32px);padding:0 max(0.5vmin,4px);left:50%;bottom:max(12.5vmin,100px);transform:translateX(-50%);color:#fff;border-radius:max(0.5vmin,4px);background:rgba(100,100,100,0.5);}
+  </style>
+  <div class="dm-camera-mn-toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dynamsoft-barcode-reader-bundle@10.5.3000/dist/dbr.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dynamsoft-barcode-reader-bundle@11.2.2000-beta-202510292308/dist/dbr.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <!-- If the network is unstable or you prefer to self-host the SDK, uncomment the line below to load it locally -->
   <!-- <script src="../../../distributables/dbr.bundle.js"></script> -->
@@ -54,6 +58,7 @@
     let barcodeResult = document.getElementById("barcodeResult");
     let frameSharpnes;
     let poorFrameCount = 0;
+    let currentZoomStartTime = 0;
  
 
     // Dynamsoft.Core.CoreModule.enableLogging();
@@ -123,24 +128,40 @@
     const frameHealthUpdater = async() => {
  
       const { cameraEnhancer } = await pInit;
-      
+
+      let isNeedZoomSmaller = false;
 
       if(frameSharpnes < 300){
         frameHealth.innerText = "Frame Health: Poor";
         frameHealth.style.color = "red";
         poorFrameCount++;
         if(poorFrameCount >=25){
-          
-          cameraEnhancer.setZoom({factor: cameraEnhancer.getZoomSettings().factor - 1});
-
+          isNeedZoomSmaller = true;
           poorFrameCount = 0;
-          alert("The captured barcode area is to poor, please reduce the distance, reducing the zoom level by 1.");
         }
-
       }else{
-          frameHealth.innerText = "Frame Health: Good";
-          frameHealth.style.color = "green";
-        
+        frameHealth.innerText = "Frame Health: Good";
+        frameHealth.style.color = "green";
+      }
+
+      if(!currentZoomStartTime){
+        currentZoomStartTime = Date.now();
+      }else{
+        if(Date.now() - currentZoomStartTime > 3000){ 
+          // stay at this zoom too long
+          isNeedZoomSmaller = true;
+          currentZoomStartTime = 0;
+        }
+      }
+
+      if(isNeedZoomSmaller){
+        let _zoom = cameraEnhancer.getZoomSettings().factor;
+        if(_zoom > 1){
+          _zoom -= 1;
+          if(_zoom < 1){ _zoom = 1; }
+          cameraEnhancer.setZoom({factor: cameraEnhancer.getZoomSettings().factor - 1});
+          funcShowToast("The captured barcode area is to poor, please reduce the distance, reducing the zoom level by 1.");
+        }
       }
 
 
@@ -230,25 +251,34 @@
         cvRouter.setInput(cameraEnhancer);
 
 
-        let ss = await cvRouter.getSimplifiedSettings("ReadDistantBarcodes");
-        ss.timeout = 100000;
-        ss.minImageCaptureInterval = 100;
-        await cvRouter.updateSettings("ReadDistantBarcodes", ss);
+        // let ss = await cvRouter.getSimplifiedSettings("ReadDistantBarcodes");
+        // ss.timeout = 100000;
+        // ss.minImageCaptureInterval = 100;
+        // await cvRouter.updateSettings("ReadDistantBarcodes", ss);
+        
+
+        // Customize decode settings
+        cvRouter.initSettings('./modifiedTemplates.json');
 
         // Define a callback for results.
         const resultReceiver = new Dynamsoft.CVR.CapturedResultReceiver();
     
         resultReceiver.onCapturedResultReceived = async (result) => {
-           resultItems = result.items;
-           console.log("Detected barcodes:", resultItems);
-           if(resultItems.length > 0){
+          
+           let barcodeResultItems = result.decodedBarcodesResult?.barcodeResultItems;
+           if(barcodeResultItems?.length){
+            console.log("Detected barcodes:", barcodeResultItems);
             poorFrameCount = 0; //reset poor frame count on successful detection
-            for (let item of resultItems) {
-          barcodeResult.textContent = `${item.formatString}: ${item.text}\n\n`;
-        }
-         cameraEnhancer.close();
-          cvRouter.stopCapturing();
-           } 
+            currentZoomStartTime = 0; //reset zoom start time
+            for (let item of barcodeResultItems) {
+              barcodeResult.textContent = `${item.formatString}: ${item.text}\n\n`;
+            }
+            cameraEnhancer.close();
+            cvRouter.stopCapturing();
+            cameraView.setScanLaserVisible(false);
+           }
+           // check health every frame
+           frameHealthUpdater(); 
          
         };
         
@@ -269,21 +299,21 @@
 
           const localizedBarcodes = intermediateResult.localizedBarcodes;
 
+          let _maxFrameSharpnes = 0;
           for(let i=0;i<localizedBarcodes.length;i++){
             const barcode = localizedBarcodes[i];
 
             const croppedImage = cropByFourPoints(canvasImage, barcode.location.points);
           
-       
-            frameSharpnes = calculateLaplacianVariance(croppedImage);
-           
-            filterValue.innerText = frameSharpnes.toFixed(2);
-            
-            frameHealthUpdater();
-
+            let _frameSharpnes = calculateLaplacianVariance(croppedImage);
+            if(_frameSharpnes > _maxFrameSharpnes){
+              _maxFrameSharpnes = _frameSharpnes;
+            }
           }
-                    
-
+          // one frame only get one frameSharpnes
+          frameSharpnes = _maxFrameSharpnes;
+          filterValue.innerText = frameSharpnes.toFixed(2);
+          console.log(frameSharpnes);//debug
         };  
        
 
@@ -347,8 +377,26 @@
       cameraEnhancer.close();
       cameraView.setScanLaserVisible(false);
       poorFrameCount = 0;
+      currentZoomStartTime = 0; //reset zoom start time
     });
 
+    
+
+    const elToast = document.querySelector('.dm-camera-mn-toast');
+    let taskShowToast = null;
+    const funcShowToast = (info, duration = 3000)=>{
+      if(!elToast){ return; }
+      elToast.textContent = info;
+      elToast.style.display = '';
+      if(null != taskShowToast){
+        clearTimeout(taskShowToast);
+        taskShowToast = null;
+      }
+      taskShowToast = setTimeout(()=>{
+        elToast.style.display = 'none';
+        taskShowToast = null;
+      }, duration);
+    };
   
   </script>
 </body>
