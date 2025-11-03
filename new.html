@@ -159,7 +159,6 @@
 
         // Clip to polygon
         tmpCtx.beginPath();
-        console.log(points);
         tmpCtx.moveTo(points[0].x, points[0].y);
         for (let i = 1; i < points.length; i++)
           tmpCtx.lineTo(points[i].x, points[i].y);
@@ -197,7 +196,7 @@
 
         return outCanvas;
       };
-       //Update zoom logic on the UI
+      //Update zoom logic on the UI
       async function updateZoom() {
         const { cameraEnhancer } = await pInit;
 
@@ -218,7 +217,7 @@
           zoomInput.value = 1;
         }
       }
- // SDK initialization and camera setup along with barcode result handling
+      // SDK initialization and camera setup along with barcode result handling
       const init = async () => {
         try {
           // Create a `CameraEnhancer` instance for camera control and a `CameraView` instance for UI control.
@@ -227,6 +226,17 @@
             cameraView
           );
           await cameraEnhancer.setResolution({ width: 3840, height: 2160 });
+
+          //Set up the scanRegion
+          let scanRegion = {
+            x: 20,
+            y: 25,
+            width: 60,
+            height: 40,
+            isMeasuredInPercentage: true,
+          };
+          cameraEnhancer.setScanRegion(scanRegion);
+
           console.log(await cameraEnhancer.getAllCameras());
           // Get default UI and append it to DOM.
           document
@@ -252,7 +262,6 @@
 
           resultReceiver.onCapturedResultReceived = async (result) => {
             resultItems = result.items;
-            console.log("Detected barcodes:", resultItems);
             if (resultItems.length > 0) {
               poorFrameCount = 0; //reset poor frame count on successful detection
               for (let item of resultItems) {
@@ -316,12 +325,9 @@
       };
       let pInit = init();
 
-
-      
       const setMaxZoom = async (cameraEnhancer) => {
         const capabilities = cameraEnhancer.getCapabilities();
         let maxZoom = capabilities?.zoom?.max;
-        console.log("Max zoom factor:", maxZoom);
         if (maxZoom) {
           // limit max zoom to 10x baseline
           let minZoom = capabilities?.zoom?.min || 1;
