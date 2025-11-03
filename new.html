@@ -13,10 +13,7 @@
   <h1 style="font-size: 1.5em">Read Barcodes from Camera - Debug</h1>
   <button id="btn-start-capturing">start capturing</button>
   <button id="btn-stop-capturing">stop capturing</button> 
-  <br /><br />
-  <label><input type="radio" name="video-settings" checked value="default" />default</label>
-  <label><input type="radio" name="video-settings" value="back-camera" />back camera</label>
-  <label><input type="radio" name="video-settings" value="only-video" />only video</label>
+  <br />
   <div>
       <label for="zoomFactor">Zoom Factor (1-10): </label>
       <input
@@ -30,11 +27,17 @@
       />
       <button onclick="updateZoom()">Apply Zoom</button>
     </div>
+  <br />
+  <label>Laplacian filter :-</label>
+  <label id="filter value"></label>
   <br /><br />
   <label><input id="cb-send-img" type="checkbox" />Download image</label>
   <br />
   <div style="margin: 10px 0;">
     <strong>Frames collected: <span id="frame-count">0</span> / 30</strong>
+  </div>
+  <div>
+    <strong id="FrameHealth"></strong>
   </div>
   <div id="div-ui-container" style="width: 100%; height: calc(100vh - 200px)"></div>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
@@ -43,35 +46,134 @@
   <!-- If the network is unstable or you prefer to self-host the SDK, uncomment the line below to load it locally -->
   <!-- <script src="../../../distributables/dbr.bundle.js"></script> -->
   <script>
-    eruda.init();
+    // eruda.init();
 
    
 
+    let filterValue = document.getElementById("filter value");
+    let frameHealth = document.getElementById("FrameHealth");
+    let frameSharpnes;
  
 
-    Dynamsoft.Core.CoreModule.enableLogging();
-    Dynamsoft.CVR.CaptureVisionRouter._onLog = console.log;
-    Dynamsoft.DCE.CameraEnhancer._onLog = console.log;
+    // Dynamsoft.Core.CoreModule.enableLogging();
+    // Dynamsoft.CVR.CaptureVisionRouter._onLog = console.log;
+    // Dynamsoft.DCE.CameraEnhancer._onLog = console.log;
 
-    /** LICENSE ALERT - README
-     * To use the library, you need to first specify a license key using the API "initLicense()" as shown below.
-     */
+    Dynamsoft.License.LicenseManager.initLicense("");
 
-    Dynamsoft.License.LicenseManager.initLicense("DLS2eyJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSJ9");
-
-    /**
-     * You can visit https://www.dynamsoft.com/customer/license/trialLicense?utm_source=samples&product=dbr&package=js to get your own trial license good for 30 days.
-     * Note that if you downloaded this sample from Dynamsoft while logged in, the above license key may already be your own 30-day trial license.
-     * For more information, see https://www.dynamsoft.com/barcode-reader/docs/web/programming/javascript/user-guide/index.html?ver=10.5.3000&cVer=true#specify-the-license&utm_source=samples or contact support@dynamsoft.com.
-     * LICENSE ALERT - THE END
-     */
-
-    // Preload "BarcodeReader" module for reading barcodes. It will save time on the initial decoding by skipping the module loading.
     Dynamsoft.Core.CoreModule.loadWasm(["DBR"]);
 
     // Store collected frames
     let collectedFrames = [];
     const MAX_FRAMES = 30;
+
+    //calculate the laplacian variance to estimate the image sharpness
+    const calculateLaplacianVariance = (canvas) => {
+      const context = canvas.getContext('2d');
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      const width = imageData.width;
+      const height = imageData.height;
+
+      // Convert to grayscale
+      const gray = new Uint8ClampedArray(width * height);
+      for (let i = 0; i < data.length; i += 4) {
+        gray[i / 4] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      }
+
+      // Apply Laplacian filter
+      const laplacian = new Float32Array(width * height);
+      const kernel = [
+        0, 1, 0,
+        1, -4, 1,
+        0, 1, 0
+      ];
+
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          let sum = 0;
+          for (let ky = -1; ky <= 1; ky++) {
+            for (let kx = -1; kx <= 1; kx++) {
+              const pixel = gray[(y + ky) * width + (x + kx)];
+              const weight = kernel[(ky + 1) * 3 + (kx + 1)];
+              sum += pixel * weight;
+            }
+          }
+          laplacian[y * width + x] = sum;
+        }
+      }
+
+      // Calculate variance
+      let mean = 0;
+      for (let i = 0; i < laplacian.length; i++) {
+        mean += laplacian[i];
+      }
+      mean /= laplacian.length;
+
+      let variance = 0;
+      for (let i = 0; i < laplacian.length; i++) {
+        variance += Math.pow(laplacian[i] - mean, 2);
+      }
+      variance /= laplacian.length;
+
+      return variance;
+    };
+
+    const frameHealthUpdater = () => {
+ 
+      if(frameSharpnes < 500){
+        frameHealth.innerText = "Frame Health: Poor";
+        frameHealth.style.color = "red";
+      }else{
+      
+          frameHealth.innerText = "Frame Health: Good";
+          frameHealth.style.color = "green";
+        
+      }
+
+
+    }
+
+    //Image Cropper
+  const cropByFourPoints =(canvas, points) => {
+  const ctx = canvas.getContext('2d');
+
+  // Create a new canvas same size
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = canvas.width;
+  tmpCanvas.height = canvas.height;
+  const tmpCtx = tmpCanvas.getContext('2d');
+
+  // Clip to polygon
+  tmpCtx.beginPath();
+  console.log(points);
+  tmpCtx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) tmpCtx.lineTo(points[i].x, points[i].y);
+  tmpCtx.closePath();
+  tmpCtx.clip();
+
+  // Draw image onto clipped area
+  tmpCtx.drawImage(canvas, 0, 0);
+
+  // Get bounding box to crop tight
+  const minX = Math.min(...points.map(p => p.x));
+  const maxX = Math.max(...points.map(p => p.x));
+  const minY = Math.min(...points.map(p => p.y));
+  const maxY = Math.max(...points.map(p => p.y));
+
+  const width = maxX - minX;
+  const height = maxY - minY;
+
+  // Create final cropped canvas
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = width;
+  outCanvas.height = height;
+  const outCtx = outCanvas.getContext('2d');
+  outCtx.drawImage(tmpCanvas, minX, minY, width, height, 0, 0, width, height);
+
+  return outCanvas;
+}
+
 
     // Function to update frame count display
     function updateFrameCount() {
@@ -145,12 +247,16 @@
         // Create a `CameraEnhancer` instance for camera control and a `CameraView` instance for UI control.
         const cameraView = await Dynamsoft.DCE.CameraView.createInstance();
          cameraEnhancer = await Dynamsoft.DCE.CameraEnhancer.createInstance(cameraView);
+         await cameraEnhancer.setResolution({width: 3840, height: 2160});
         console.log(await cameraEnhancer.getAllCameras())
         // Get default UI and append it to DOM.
         document.querySelector("#div-ui-container").append(cameraView.getUIElement());
 
         // Create a `CaptureVisionRouter` instance and set `CameraEnhancer` instance as its image source.
         const cvRouter = await Dynamsoft.CVR.CaptureVisionRouter.createInstance();
+
+        const intermediateResultManager = cvRouter.getIntermediateResultManager();
+
         cvRouter.setInput(cameraEnhancer);
 
         // Filter out unchecked and duplicate results.
@@ -161,11 +267,11 @@
         filter.setDuplicateForgetTime("barcode", 3000);
         await cvRouter.addResultFilter(filter);
 
-        let ss = await cvRouter.getSimplifiedSettings("ReadBarcodes_SpeedFirst");
+        let ss = await cvRouter.getSimplifiedSettings("ReadDistantBarcodes");
         ss.timeout = 100000;
         ss.minImageCaptureInterval = 100;
         ss.capturedResultItemTypes |= Dynamsoft.Core.EnumCapturedResultItemType.CRIT_ORIGINAL_IMAGE;
-        await cvRouter.updateSettings("ReadBarcodes_SpeedFirst", ss);
+        await cvRouter.updateSettings("ReadDistantBarcodes", ss);
 
         // Define a callback for results.
         const resultReceiver = new Dynamsoft.CVR.CapturedResultReceiver();
@@ -179,6 +285,7 @@
           }
 
           let bSendImg = !!document.getElementById("cb-send-img").checked;
+          // console.log(resultItems)
           
           // Collect frames for zip download
           if (collectedFrames.length < MAX_FRAMES && processingCount < 4) {
@@ -188,8 +295,11 @@
               for (let item of resultItems) {
                 if (item.type !== Dynamsoft.Core.EnumCapturedResultItemType.CRIT_ORIGINAL_IMAGE) continue;
                 const imageData = item.imageData;
-                console.log(item);
                 cvs = imageData.toCanvas();
+                
+                // const sharpness = calculateLaplacianVariance(cvs);
+                // console.log(`Image sharpness (Laplacian Variance):${sharpness}`);
+                // filterValue.innerText = sharpness.toFixed(2);
               }
 
               if (cvs != null) {
@@ -198,11 +308,9 @@
                   : await new Promise((resolve) => {
                     cvs.toBlob((blob) => resolve(blob));
                   });
-                
-                // Add frame to collection
             
 
-                // Also send to server if checkbox is checked
+                // download the image once the collected frames length reaches MAX_FRAMES
                 if (bSendImg) {
                   
                       collectedFrames.push(blob);
@@ -223,7 +331,43 @@
             --processingCount;
           }
         };
+        
+
+        const intermediateResultReceiver = new Dynamsoft.CVR.IntermediateResultReceiver();
+
+
+        intermediateResultReceiver.onLocalizedBarcodesReceived = async (intermediateResult, info) => {
+          if(!intermediateResult.localizedBarcodes.length)return;
+
+          const originalImage = intermediateResultManager.getOriginalImage(intermediateResult.originalImageHashId)
+          console.log(intermediateResult);
+          console.log(originalImage);
+
+          const canvasImage = originalImage.toCanvas();
+
+          const localizedBarcodes = intermediateResult.localizedBarcodes;
+
+          for(let i=0;i<localizedBarcodes.length;i++){
+            const barcode = localizedBarcodes[i];
+            console.log(barcode);
+
+            const croppedImage = cropByFourPoints(canvasImage, barcode.location.points);
+            // Download cropped barcode image
+       
+            frameSharpnes = calculateLaplacianVariance(croppedImage);
+           
+            filterValue.innerText = frameSharpnes.toFixed(2);
+            
+            frameHealthUpdater();
+
+          }
+                    
+
+        };
+        
         cvRouter.addResultReceiver(resultReceiver);
+
+        intermediateResultManager.addResultReceiver(intermediateResultReceiver);
 
         return {
           cameraView,
@@ -238,13 +382,39 @@
     };
     let pInit = init();
 
+
+        const setMaxZoom = async (cameraEnhancer) => {        
+        const capabilities = cameraEnhancer.getCapabilities();
+        let maxZoom = capabilities?.zoom?.max;
+        console.log("Max zoom factor:", maxZoom);
+        if(maxZoom) {
+          // limit max zoom to 10x baseline
+          let minZoom = capabilities?.zoom?.min || 1;
+          if(minZoom <= 1){ // base zoom level is 1
+            if(maxZoom > 10) {
+              maxZoom = 10;
+            }
+          }else{ // base zoom level is 100
+            if(maxZoom > 1000){
+              maxZoom = 1000;
+            }
+          }
+          cameraEnhancer.setZoom({factor: capabilities.zoom.max});
+        }};
+  
+
+
     document.getElementById("btn-start-capturing").addEventListener("click", async () => {
       const { cameraEnhancer, cvRouter, cameraView } = await pInit;
 
       // Open camera and start scanning barcode.
       await cameraEnhancer.open();
+
+    
+      await setMaxZoom(cameraEnhancer);
+
       cameraView.setScanLaserVisible(true);
-      await cvRouter.startCapturing("ReadBarcodes_SpeedFirst");
+      await cvRouter.startCapturing("ReadDistantBarcodes");
     });
 
     document.getElementById("btn-stop-capturing").addEventListener("click", async () => {
@@ -255,41 +425,7 @@
       cameraView.setScanLaserVisible(false);
     });
 
-    let switchVideoSettings = async () => {
-      const { cameraEnhancer } = await pInit;
-
-      switch (document.querySelector('input[name="video-settings"]:checked').value) {
-        case "back-camera":
-          await cameraEnhancer.updateVideoSettings({
-            video: {
-              facingMode: "environment",
-            },
-          });
-          break;
-        case "only-video":
-          await cameraEnhancer.updateVideoSettings({
-            video: true,
-          });
-          break;
-        default:
-          await cameraEnhancer.updateVideoSettings({
-            video: {
-              width: {
-                ideal: 1280,
-              },
-              height: {
-                ideal: 720,
-              },
-              facingMode: {
-                ideal: "environment",
-              },
-            },
-          });
-      }
-    };
-    for (let ipt of document.querySelectorAll('input[name="video-settings"]')) {
-      ipt.addEventListener("change", switchVideoSettings);
-    }
+  
   </script>
 </body>
 
