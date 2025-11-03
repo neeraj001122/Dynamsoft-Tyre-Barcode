@@ -49,7 +49,7 @@
     let frameHealth = document.getElementById("FrameHealth");
     let zoomFactorInput = document.getElementById("zoomFactor");
     let frameSharpnes;
-    let resultItems;
+    let poorFrameCount = 0;
  
 
     // Dynamsoft.Core.CoreModule.enableLogging();
@@ -119,16 +119,18 @@
     const frameHealthUpdater = async() => {
  
       const { cameraEnhancer } = await pInit;
-      let poorFrameCount = 0;
+      
 
       if(frameSharpnes < 1500){
         frameHealth.innerText = "Frame Health: Poor";
         frameHealth.style.color = "red";
         poorFrameCount++;
-        if(poorFrameCount >=10){
-          cameraEnhancer.setZoom({factor:1});
-          cameraEnhancer.setZoom({factor: capabilities.zoom.max-1});
-          poorFrameCount =0;
+        console.log(poorFrameCount)
+        console.log(cameraEnhancer.getZoomSettings().factor)
+        if(poorFrameCount >=20){
+          
+          cameraEnhancer.setZoom({factor: cameraEnhancer.getZoomSettings().factor - 1});
+          poorFrameCount = 0;
           alert("The captured barcode area is to poor, please reduce the distance, reducing the zoom level by 1.");
         }
 
@@ -263,13 +265,6 @@
 
         cvRouter.setInput(cameraEnhancer);
 
-        // Filter out unchecked and duplicate results.
-        const filter = new Dynamsoft.Utility.MultiFrameResultCrossFilter();
-        filter.enableResultCrossVerification("barcode", true); // Filter out unchecked barcodes.
-        // Filter out duplicate barcodes within 3 seconds.
-        filter.enableResultDeduplication("barcode", true);
-        filter.setDuplicateForgetTime("barcode", 3000);
-        await cvRouter.addResultFilter(filter);
 
         let ss = await cvRouter.getSimplifiedSettings("ReadDistantBarcodes");
         ss.timeout = 100000;
@@ -298,8 +293,7 @@
           if(!intermediateResult.localizedBarcodes.length)return;
 
           const originalImage = intermediateResultManager.getOriginalImage(intermediateResult.originalImageHashId)
-          console.log(intermediateResult);
-          console.log(originalImage);
+
 
           const canvasImage = originalImage.toCanvas();
 
@@ -307,7 +301,6 @@
 
           for(let i=0;i<localizedBarcodes.length;i++){
             const barcode = localizedBarcodes[i];
-            console.log(barcode);
 
             const croppedImage = cropByFourPoints(canvasImage, barcode.location.points);
           
