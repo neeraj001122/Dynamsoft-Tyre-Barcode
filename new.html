@@ -15,7 +15,7 @@
   <button id="btn-stop-capturing">stop capturing</button> 
   <br />
   <div>
-      <label for="zoomFactor">Zoom Factor (1-10): </label>
+      <label for="zoomFactor">Zoom factor: </label>
       <input
         type="number"
         id="zoomFactor"
@@ -35,6 +35,9 @@
     <strong id="FrameHealth"></strong>
   </div>
   <div id="div-ui-container" style="width: 100%; height: calc(100vh - 200px)"></div>
+  <div>
+    <strong id="barcodeResult"></strong>
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script src="https://cdn.jsdelivr.net/npm/dynamsoft-barcode-reader-bundle@10.5.3000/dist/dbr.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -48,6 +51,7 @@
     let filterValue = document.getElementById("filter value");
     let frameHealth = document.getElementById("FrameHealth");
     let zoomFactorInput = document.getElementById("zoomFactor");
+    let barcodeResult = document.getElementById("barcodeResult");
     let frameSharpnes;
     let poorFrameCount = 0;
  
@@ -121,15 +125,14 @@
       const { cameraEnhancer } = await pInit;
       
 
-      if(frameSharpnes < 1500){
+      if(frameSharpnes < 300){
         frameHealth.innerText = "Frame Health: Poor";
         frameHealth.style.color = "red";
         poorFrameCount++;
-        console.log(poorFrameCount)
-        console.log(cameraEnhancer.getZoomSettings().factor)
-        if(poorFrameCount >=10){
+        if(poorFrameCount >=25){
           
           cameraEnhancer.setZoom({factor: cameraEnhancer.getZoomSettings().factor - 1});
+
           poorFrameCount = 0;
           alert("The captured barcode area is to poor, please reduce the distance, reducing the zoom level by 1.");
         }
@@ -184,7 +187,6 @@
 }
 
 
-   
 
     async function updateZoom() {
 
@@ -208,45 +210,7 @@
         }
       }
 
-    // Function to download frames as zip
-    async function downloadFramesAsZip() {
-      if (collectedFrames.length === 0) {
-        console.log('No frames to download');
-        return;
-      }
-
-      try {
-        const zip = new JSZip();
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-
-        // Add each frame to the zip
-        for (let i = 0; i < collectedFrames.length; i++) {
-          const blob = collectedFrames[i];
-          zip.file(`frame_${i + 1}.png`, blob);
-        }
-
-        // Generate zip file
-        const zipBlob = await zip.generateAsync({ type: 'blob' });
-
-        // Create download link and trigger download
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(zipBlob);
-        link.download = `barcode_frames_${timestamp}.zip`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
-
-        console.log(`Downloaded ${collectedFrames.length} frames as zip`);
-        
-        // Clear collected frames after download
-        collectedFrames = [];
-        updateFrameCount();
-      } catch (ex) {
-        console.error('Error creating zip:', ex);
-        alert('Failed to create zip file: ' + ex.message);
-      }
-    }
+  
 
     const init = async () => {
       try {
@@ -269,16 +233,22 @@
         let ss = await cvRouter.getSimplifiedSettings("ReadDistantBarcodes");
         ss.timeout = 100000;
         ss.minImageCaptureInterval = 100;
-        ss.capturedResultItemTypes |= Dynamsoft.Core.EnumCapturedResultItemType.CRIT_ORIGINAL_IMAGE;
         await cvRouter.updateSettings("ReadDistantBarcodes", ss);
 
         // Define a callback for results.
         const resultReceiver = new Dynamsoft.CVR.CapturedResultReceiver();
-        let processingCount = 0;
     
         resultReceiver.onCapturedResultReceived = async (result) => {
            resultItems = result.items;
-          
+           console.log("Detected barcodes:", resultItems);
+           if(resultItems.length > 0){
+            poorFrameCount = 0; //reset poor frame count on successful detection
+            for (let item of resultItems) {
+          barcodeResult.textContent = `${item.formatString}: ${item.text}\n\n`;
+          cameraEnhancer.close();
+          cvRouter.stopCapturing();
+        }
+           } 
          
         };
         
@@ -376,6 +346,7 @@
       cvRouter.stopCapturing();
       cameraEnhancer.close();
       cameraView.setScanLaserVisible(false);
+      poorFrameCount = 0;
     });
 
   
