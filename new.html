@@ -20,7 +20,7 @@
         type="number"
         id="zoomFactor"
         min="1"
-        max="10"
+        max="5"
         value="1"
         step="1"
         style="margin: 10px 0"
@@ -31,11 +31,6 @@
   <label>Laplacian filter :-</label>
   <label id="filter value"></label>
   <br /><br />
-  <label><input id="cb-send-img" type="checkbox" />Download image</label>
-  <br />
-  <div style="margin: 10px 0;">
-    <strong>Frames collected: <span id="frame-count">0</span> / 30</strong>
-  </div>
   <div>
     <strong id="FrameHealth"></strong>
   </div>
@@ -52,7 +47,9 @@
 
     let filterValue = document.getElementById("filter value");
     let frameHealth = document.getElementById("FrameHealth");
+    let zoomFactorInput = document.getElementById("zoomFactor");
     let frameSharpnes;
+    let resultItems;
  
 
     // Dynamsoft.Core.CoreModule.enableLogging();
@@ -119,13 +116,23 @@
       return variance;
     };
 
-    const frameHealthUpdater = () => {
+    const frameHealthUpdater = async() => {
  
-      if(frameSharpnes < 500){
+      const { cameraEnhancer } = await pInit;
+      let poorFrameCount = 0;
+
+      if(frameSharpnes < 1500){
         frameHealth.innerText = "Frame Health: Poor";
         frameHealth.style.color = "red";
+        poorFrameCount++;
+        if(poorFrameCount >=10){
+          cameraEnhancer.setZoom({factor:1});
+          cameraEnhancer.setZoom({factor: capabilities.zoom.max-1});
+          poorFrameCount =0;
+          alert("The captured barcode area is to poor, please reduce the distance, reducing the zoom level by 1.");
+        }
+
       }else{
-      
           frameHealth.innerText = "Frame Health: Good";
           frameHealth.style.color = "green";
         
@@ -175,10 +182,7 @@
 }
 
 
-    // Function to update frame count display
-    function updateFrameCount() {
-      document.getElementById('frame-count').textContent = collectedFrames.length;
-    }
+   
 
     async function updateZoom() {
 
@@ -276,62 +280,16 @@
         // Define a callback for results.
         const resultReceiver = new Dynamsoft.CVR.CapturedResultReceiver();
         let processingCount = 0;
+    
         resultReceiver.onCapturedResultReceived = async (result) => {
-          const resultItems = result.items;
-          if (!resultItems.length) return;
-
-          if (resultItems.some((item) => item.type === "barcode")) {
-            Dynamsoft.DCE.Feedback.beep();
-          }
-
-          let bSendImg = !!document.getElementById("cb-send-img").checked;
-          // console.log(resultItems)
+           resultItems = result.items;
           
-          // Collect frames for zip download
-          if (collectedFrames.length < MAX_FRAMES && processingCount < 4) {
-            ++processingCount;
-            try {
-              let cvs;
-              for (let item of resultItems) {
-                if (item.type !== Dynamsoft.Core.EnumCapturedResultItemType.CRIT_ORIGINAL_IMAGE) continue;
-                const imageData = item.imageData;
-                cvs = imageData.toCanvas();
-                
-                // const sharpness = calculateLaplacianVariance(cvs);
-                // console.log(`Image sharpness (Laplacian Variance):${sharpness}`);
-                // filterValue.innerText = sharpness.toFixed(2);
-              }
-
-              if (cvs != null) {
-                let blob = cvs.convertToBlob
-                  ? await cvs.convertToBlob()
-                  : await new Promise((resolve) => {
-                    cvs.toBlob((blob) => resolve(blob));
-                  });
-            
-
-                // download the image once the collected frames length reaches MAX_FRAMES
-                if (bSendImg) {
-                  
-                      collectedFrames.push(blob);
-                updateFrameCount();
-                console.log(`Frame ${collectedFrames.length} collected`);
-
-                // Check if we reached 30 frames
-                if (collectedFrames.length === MAX_FRAMES) {
-                  console.log('30 frames collected, downloading zip...');
-                  await downloadFramesAsZip();
-                }
-
-                }
-              }
-            } catch (ex) {
-              console.error(ex);
-            }
-            --processingCount;
-          }
+         
         };
         
+         cvRouter.addResultReceiver(resultReceiver);
+      
+         
 
         const intermediateResultReceiver = new Dynamsoft.CVR.IntermediateResultReceiver();
 
@@ -352,7 +310,7 @@
             console.log(barcode);
 
             const croppedImage = cropByFourPoints(canvasImage, barcode.location.points);
-            // Download cropped barcode image
+          
        
             frameSharpnes = calculateLaplacianVariance(croppedImage);
            
@@ -363,11 +321,11 @@
           }
                     
 
-        };
-        
-        cvRouter.addResultReceiver(resultReceiver);
+        };  
+       
 
         intermediateResultManager.addResultReceiver(intermediateResultReceiver);
+         
 
         return {
           cameraView,
@@ -400,6 +358,8 @@
             }
           }
           cameraEnhancer.setZoom({factor: capabilities.zoom.max});
+          zoomFactorInput.value =  capabilities.zoom.max;
+          zoomFactorInput.max = capabilities.zoom.max;
         }};
   
 
