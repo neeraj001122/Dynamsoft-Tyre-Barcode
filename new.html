@@ -245,9 +245,9 @@
             poorFrameCount = 0; //reset poor frame count on successful detection
             for (let item of resultItems) {
           barcodeResult.textContent = `${item.formatString}: ${item.text}\n\n`;
-          cameraEnhancer.close();
-          cvRouter.stopCapturing();
         }
+         cameraEnhancer.close();
+          cvRouter.stopCapturing();
            } 
          
         };
