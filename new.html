@@ -158,7 +158,7 @@
         if(_zoom > 1){
           _zoom -= 1;
           if(_zoom < 1){ _zoom = 1; }
-          cameraEnhancer.setZoom({factor: cameraEnhancer.getZoomSettings().factor - 1});
+          cameraEnhancer.setZoom({factor: _zoom});
           funcShowToast("The captured barcode area is to poor, please reduce the distance, reducing the zoom level by 1.");
         }
       }
