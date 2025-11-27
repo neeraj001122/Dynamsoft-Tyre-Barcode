@@ -48,10 +48,11 @@ export class AppComponent {
       uiPath: "https://cdn.jsdelivr.net/npm/dynamsoft-barcode-reader-bundle@11.2.4000/dist/ui/barcode-scanner.ui.xml",
 
       showUploadImageButton: false,
-      // scannerViewConfig: {
-      //   showFlashButton: true,
-      //   cameraSwitchControl: "toggleFrontBack",
-      // },
+      scannerViewConfig: {
+        // showFlashButton: true,
+        // cameraSwitchControl: "toggleFrontBack",
+        showCloseButton:false
+      },
       templateFilePath: "modified-Templates.json",
 
       // Specify custom paths for the engine resources
