@@ -47,7 +47,7 @@ export class AppComponent {
       // Specify the path for the definition file "barcode-scanner.ui.xml" for the scanner view.
       uiPath: "https://cdn.jsdelivr.net/npm/dynamsoft-barcode-reader-bundle@11.2.4000/dist/ui/barcode-scanner.ui.xml",
 
-      showUploadImageButton: false,
+      showUploadImageButton: true,
       scannerViewConfig: {
         // showFlashButton: true,
         // cameraSwitchControl: "toggleFrontBack",
@@ -311,4 +311,5 @@ const funcShowToast = (msg: string, duration = 3000) => {
     taskShowToast = null;
   }, duration);
 };
+
 
