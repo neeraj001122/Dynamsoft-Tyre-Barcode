@@ -1,0 +1,6 @@
+<div class="image-scan-page">
+  <h2>Scan from Image</h2>
+  <input type="file" #fileInput (change)="onFileSelected($event)" accept="image/*">
+  <br>
+  <img #imagePreview alt="Selected image" style="max-width: 100%; max-height: 400px;">
+</div>
