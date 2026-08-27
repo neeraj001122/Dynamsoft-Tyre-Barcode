@@ -117,7 +117,7 @@ export class AppComponent {
         const { cameraEnhancer, cameraView, cvRouter } = components;
         await this.detectZoomRange(cameraEnhancer);
         // Set the zoom factor to 10
-        cameraEnhancer.setZoom({ factor: Math.min(10 * this.zoomBase, this.maxZoom) });
+        cameraEnhancer.setZoom({ factor: Math.min(5 * this.zoomBase, this.maxZoom) });
       },
     }
 
@@ -136,9 +136,8 @@ export class AppComponent {
   }
   async detectZoomRange(cameraEnhancer: any): Promise<void> { 
     const capabilities = cameraEnhancer.getCapabilities();
-    let maxZoom = Math.floor(capabilities?.zoom?.max/2);
+    let maxZoom = capabilities?.zoom?.max;
 
-    console.log(maxZoom)
 
     if (maxZoom) {
       const minZoom = capabilities.zoom.min;
