@@ -2,13 +2,8 @@
   "BarcodeFormatSpecificationOptions": [
     {
       "BarcodeFormatIds": [
-        "BF_PDF417",
-        "BF_QR_CODE",
-        "BF_DATAMATRIX",
-        "BF_AZTEC",
-        "BF_MICRO_QR",
-        "BF_MICRO_PDF417",
-        "BF_DOTCODE"
+        "BF_CODE_39",
+        "BF_CODE_39_EXTENDED"
       ],
       "MirrorMode": "MM_BOTH",
       "Name": "bfs1"
@@ -34,6 +29,7 @@
       "BarcodeFormatIds": ["BF_CODE_39_EXTENDED"],
       "ExpectedBarcodesCount": 1,
       "Name": "task-read-barcodes-distant",
+      "MaxThreadsInOneTask": 1,
       "SectionArray": [
         {
           "ImageParameterName": "ip-read-barcodes-distant",
@@ -52,7 +48,7 @@
               "LocalizationModes": [
                 {
                   "Mode": "LM_SCAN_DIRECTLY",
-                  "ScanDirection": 2
+                  "ScanDirection": 0
                 },
                 {
                   "Mode": "LM_CONNECTED_BLOCKS",
@@ -97,6 +93,10 @@
                   "Mode": "DM_DIRECT_BINARIZATION"
                 },
                 {
+                  "Mode": "DM_NEURAL_NETWORK",
+                  "ModelNameArray": ["Code39ITFDecoder"]
+                },
+                {
                   "Mode": "DM_DEEP_ANALYSIS"
                 }
               ],
@@ -112,13 +112,16 @@
       "ImageROIProcessingNameArray": [
         "roi-read-barcodes-distant"
       ],
-      "Name": "ReadBarcodes_SpeedFirst"
+      "Name": "ReadBarcodes_SpeedFirst",
+      "MaxParallelTasks": 2,
+      "Timeout": 750
     },
     {
       "ImageROIProcessingNameArray": [
         "roi-read-barcodes-distant"
       ],
-      "Name": "ReadBarcodes_ReadRateFirst"
+      "Name": "ReadBarcodes_ReadRateFirst",
+      "MaxParallelTasks": 2
     }
   ],
   "ImageParameterOptions": [
@@ -179,6 +182,6 @@
     }
   ],
   "GlobalParameter": {
-    "IntraOpNumThreads": 1
+    "IntraOpNumThreads": 2
   }
 }
