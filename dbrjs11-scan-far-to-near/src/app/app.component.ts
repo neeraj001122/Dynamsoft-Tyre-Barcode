@@ -10,7 +10,7 @@ interface LocalizedBarcode {
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrl: './app.component.css',
+  styleUrl: './app.component.css'
  
 })
 
@@ -69,10 +69,10 @@ export class AppComponent {
         // cameraView.setScanLaserVisible(true);
         // // Set the scan region to a rectangle with percentage values by cameraEnhancer
         let region = {
-          "x": 20,
-          "y": 30,
-          "width": 60,
-          "height": 40,
+          "x": 15,
+          "y": 35,
+          "width": 75,
+          "height": 15,
           "isMeasuredInPercentage": true
         };
         cameraEnhancer.setScanRegion(region);
@@ -123,8 +123,7 @@ export class AppComponent {
       onCameraOpen: async(components)=>{
         const { cameraEnhancer, cameraView, cvRouter } = components;
         // await this.detectZoomRange(cameraEnhancer);
-        // // Set the zoom factor to 10
-        // cameraEnhancer.setZoom({ factor: 2}) ;
+        cameraEnhancer.setZoom({ factor: 2});
       },
     }
 
