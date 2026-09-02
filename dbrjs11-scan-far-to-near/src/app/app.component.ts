@@ -10,11 +10,13 @@ interface LocalizedBarcode {
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrl: './app.component.css'
+  styleUrl: './app.component.css',
+ 
 })
 
 export class AppComponent {
   title = 'angular';
+   imageUrl='';
   barcodeScanner: BarcodeScanner | null = null;
 
   // zoomBase = 1; // base zoom level is usually 1 or 100
@@ -98,19 +100,19 @@ export class AppComponent {
         //   const canvasImage = (originalImage as any).toCanvas();
         //   const localized = intermediateResult.localizedBarcodes as LocalizedBarcode[];
 
-        //   let maxSharpness = 0;
-
         //   for (const barcode of localized) {
-        //     const cropped = cropByFourPoints(
+        //     const cropped = this.cropByFourPoints(
         //       canvasImage,
         //       barcode.location.points
         //     );
 
-        //     const sharp = calculateLaplacianVariance(cropped);
-        //     if (sharp > maxSharpness) maxSharpness = sharp;
+        //     // console.log(cropped)
+
+        //     // const sharp = calculateLaplacianVariance(cropped);
+        //     // if (sharp > maxSharpness) maxSharpness = sharp;
         //   }
 
-        //   this.frameSharpness = maxSharpness;
+          // this.frameSharpness = maxSharpness;
         // };
 
         // cvRouter
@@ -122,7 +124,7 @@ export class AppComponent {
         const { cameraEnhancer, cameraView, cvRouter } = components;
         // await this.detectZoomRange(cameraEnhancer);
         // // Set the zoom factor to 10
-        cameraEnhancer.setZoom({ factor: 2}) ;
+        // cameraEnhancer.setZoom({ factor: 2}) ;
       },
     }
 
@@ -131,8 +133,20 @@ export class AppComponent {
 
     // Launch the scanner; once a barcode is detected, display its text in an alert
     let result = await this.barcodeScanner.launch();
+
+    if (result.barcodeImage) {
+  const canvas = this.bytesToCanvas(result.barcodeImage);
+
+  this.imageUrl = canvas.toDataURL('image/png');
+}
+
     if (result.barcodeResults.length) {
-      alert(result.barcodeResults[0].text);
+      // const canvas = (result.originalImageResult as any).toCanvas()
+      // this.imageUrl = canvas.toDataURL('image/png');
+
+      console.log(result.barcodeResults[0].text)
+
+      alert(result.barcodeResults[0].text); 
     }
   }
   async ngOnDestroy(): Promise<void> { 
@@ -191,6 +205,40 @@ export class AppComponent {
 //   };
 // }
 
+
+// bytes to canvas
+bytesToCanvas(imageData: {
+  bytes: Uint8Array;
+  width: number;
+  height: number;
+  stride: number;
+}): HTMLCanvasElement {
+
+  const canvas = document.createElement('canvas');
+
+  canvas.width = imageData.width;
+  canvas.height = imageData.height;
+
+  const context = canvas.getContext('2d');
+
+  if (!context) {
+    throw new Error('Could not get canvas context');
+  }
+
+  const rgbaData = new Uint8ClampedArray(imageData.bytes);
+
+  const canvasImageData = new ImageData(
+    rgbaData,
+    imageData.width,
+    imageData.height
+  );
+
+  context.putImageData(canvasImageData, 0, 0);
+
+  return canvas;
+}
+
+
 // // ================== LAPLACIAN SHARPNESS ==============
 // const calculateLaplacianVariance = (canvas: HTMLCanvasElement): number => {
 //   const context: CanvasRenderingContext2D = canvas.getContext("2d")!;
@@ -239,7 +287,7 @@ export class AppComponent {
 // };
 
 // // ================== CROP BY POINTS ==================
-// const cropByFourPoints = (
+//  cropByFourPoints = (
 //   oriCanvas: HTMLCanvasElement,
 //   points: Point[]
 // ): HTMLCanvasElement => {
