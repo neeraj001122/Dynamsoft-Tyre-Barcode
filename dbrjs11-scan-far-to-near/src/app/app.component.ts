@@ -1,5 +1,5 @@
 import { Component, ElementRef, ViewChild } from '@angular/core';
-import { BarcodeScanner, BarcodeScannerConfig, Point, CapturedResultReceiver, CameraEnhancer, IntermediateResultReceiver } from 'dynamsoft-barcode-reader-bundle';
+import { BarcodeScanner, BarcodeScannerConfig, Point, CapturedResultReceiver, CameraEnhancer, IntermediateResultReceiver, EnumEnhancedFeatures } from 'dynamsoft-barcode-reader-bundle';
 
 interface LocalizedBarcode {
   location: {
@@ -45,26 +45,31 @@ export class AppComponent {
       //   showFlashButton: true,
       //   cameraSwitchControl: "toggleFrontBack",
       // },
-      templateFilePath: "modified-Templates.json",
+      templateFilePath: "modified-Templates-Speed.json",
 
       // Specify custom paths for the engine resources
       engineResourcePaths: {
         rootDirectory: "https://cdn.jsdelivr.net/npm/",
-      },
+      },  
       onInitReady: async(components) => {
         // Do something with the foundational components
         const { cameraEnhancer, cameraView, cvRouter } = components;
 
         await cameraEnhancer.setResolution({ width: 1920, height: 1080 });
 
+        await cameraEnhancer.enableEnhancedFeatures(EnumEnhancedFeatures.EF_ENHANCED_FOCUS);
+
+        await cameraEnhancer.enableEnhancedFeatures(EnumEnhancedFeatures.EF_TAP_TO_FOCUS );
+        
+
         //// optional
         // // Set the scan laser to be visible in cameraView
         // cameraView.setScanLaserVisible(true);
         // // Set the scan region to a rectangle with percentage values by cameraEnhancer
         let region = {
-          "x": 0,
+          "x": 20,
           "y": 30,
-          "width": 100,
+          "width": 60,
           "height": 40,
           "isMeasuredInPercentage": true
         };
@@ -117,7 +122,7 @@ export class AppComponent {
         const { cameraEnhancer, cameraView, cvRouter } = components;
         // await this.detectZoomRange(cameraEnhancer);
         // // Set the zoom factor to 10
-        // cameraEnhancer.setZoom({ factor: Math.min(5 * this.zoomBase, this.maxZoom) });
+        cameraEnhancer.setZoom({ factor: 2}) ;
       },
     }
 
